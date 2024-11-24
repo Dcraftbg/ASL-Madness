@@ -175,10 +175,13 @@ int decompile_obj(Decompiler* dc) {
                     dcprintfln(dc, "Device(%s)", name);
                     dcprintfln(dc, "{");
                     dc->depth++;
-                    // TODO: Remove recursion using a stack
-                    if((e=decompile_obj(dc)) < 0) 
-                        return e;
-
+                    while(dc_left(dc) > 0) {
+                        // TODO: Remove recursion using a stack
+                        if((e=decompile_obj(dc)) < 0) { 
+                            eprintfln("decompile_obj failed");
+                            return e;
+                        }
+                    }
                     dc->depth--;
                     dcprintfln(dc, "}");
                     dc->head = next;
