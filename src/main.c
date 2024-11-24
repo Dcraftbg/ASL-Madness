@@ -161,7 +161,7 @@ int decompile_obj(Decompiler* dc) {
                 case 0x82: {
                     int len = pkg_len(dc);
                     if(len < 0) return -1;
-                    if(dc_left(dc) > (size_t)len) 
+                    if(dc_left(dc) < (size_t)len)
                         return -1;
                     void* next = dc->head+len;
                     void* end = dc->end; 
@@ -221,7 +221,7 @@ int decompile(Decompiler* dc) {
             case 0x10: {
                 int len = pkg_len(dc);
                 if(len < 0) return -1;
-                if(dc_left(dc) > (size_t)len) 
+                if(dc_left(dc) < (size_t)len) 
                     return -1;
                 void* next = dc->head+len;
                 void* end = dc->end; 
