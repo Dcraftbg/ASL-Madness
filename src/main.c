@@ -58,7 +58,12 @@ uint8_t dc_peak_byte(Decompiler* dc) {
 }
 uint32_t dc_eat_u32(Decompiler* dc) {
     uint32_t data = ((uint32_t*)dc->head)[0];
-    dc->head += 4;
+    dc->head += sizeof(uint32_t);
+    return data;
+}
+uint16_t dc_eat_u16(Decompiler* dc) {
+    uint16_t data = ((uint16_t*)dc->head)[0];
+    dc->head += sizeof(uint16_t);
     return data;
 }
 int parse_pkg_len(Decompiler* dc) {
@@ -122,6 +127,11 @@ int decompile_dataref(Decompiler* dc) {
     int e;
     uint8_t op = dc_eat_byte(dc); 
     switch(op) {
+    case 0x0B:
+        if(dc_left(dc) < 2)
+            return -1;
+        dcprintfln(dc, "0x%04X", dc_eat_u16(dc));
+        return 0;
     case 0x0C:
         if(dc_left(dc) < 4)
             return -1;
