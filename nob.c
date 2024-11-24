@@ -7,6 +7,8 @@ int main(int argc, char **argv) {
     Cmd cmd = {0};
     cmd_append(&cmd, "cc", "-Wall", "-Wextra", "-o", "main", "./src/main.c", "-I", ".");
     if (!cmd_run_sync_and_reset(&cmd)) return 1;
-    cmd_append(&cmd, "./main", "examples/simple.aml");
+    const char* _exe = shift(argv, argc);
+    cmd_append(&cmd, "./main");
+    da_append_many(&cmd, argv, argc);
     if (!cmd_run_sync_and_reset(&cmd)) return 1;
 }
