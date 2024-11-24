@@ -7,7 +7,7 @@ A simple (Work in progress) AML decompiler written in C
 ```sh
 iasl examples/simple.asl
 gcc nob.c -o nob
-./nob
+./nob examples/simple.aml
 ```
 
 
