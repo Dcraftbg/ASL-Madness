@@ -75,6 +75,10 @@ int parse_pkg_len(Decompiler* dc) {
     uint8_t count = lead >> 6;
     if (count == 0) {
         return lead & 0b111111;
+    } else if (count == 1) {
+        if(dc_left(dc) < 1) 
+            return -1;
+        return (((unsigned int)lead) & 0b1111) | (((unsigned int)dc_eat_byte(dc)) << 4);
     } else {
         eprintfln("Unsupported pkg_len count=%d", count);
         return -1;
@@ -98,28 +102,32 @@ bool verify_checksum(uint8_t* bytes, size_t count) {
     return checksum == 0;
 }
 
-const char* dc_nameseg(Decompiler* dc) {
-    if(dc_left(dc) == 0) return NULL;
+typedef struct {
+    const char* it;
+    const char* end;
+} Name;
+int dc_name(Decompiler* dc, Name* name) {
+    if(dc_left(dc) == 0) return -1;
     uint8_t lead = dc_peak_byte(dc);
     if((lead >= 'A' && lead <= 'Z') || lead == '_') {
-        if(dc_left(dc) < 4) return NULL;
-        char* str = arena_alloc(dc->arena, 5);
-        for(size_t i = 0; i < 4; ++i) {
-            uint8_t byte = dc_eat_byte(dc);
-            if(byte == '_' && i > 0) {
-                str[i] = '\0';
-                continue;
-            }
-            str[i] = byte;
-        }
-        str[4] = '\0';
-        return str;
+        if(dc_left(dc) < 4) return -1;
+        name->it = dc->head;
+        name->end = dc->head;
+        while(name->end < name->it+4 && (name->end == name->it || name->end[0] != '_'))
+            name->end++;
+        return 0;
     }
     eprintf("Unhandled leading character: `");
     if(isprint(lead)) eprintf("%c", lead);
     else eprintf("\\x%02X", lead);
     eprintfln("` (%02X)", lead);
-    return NULL;
+    return -1;
+}
+int dc_ns(Decompiler* dc, Name* name) {
+    int e;
+    if((e=dc_name(dc, name)) < 0) 
+        return e;
+    return (name->it[0] >= 'A' && name->it[0] <= 'Z') || name->it[0] == '_' ? 0 : -1;
 }
 int decompile_dataref(Decompiler* dc) {
     if(dc_left(dc) == 0) 
@@ -149,12 +157,12 @@ int decompile_obj(Decompiler* dc) {
     uint8_t op = dc_eat_byte(dc); 
     switch(op) {
         case 0x08: {
-            const char* name = dc_nameseg(dc);
-            if(!name) {
+            Name name;
+            if((e=dc_ns(dc, &name)) < 0) {
                 eprintfln("Failed to parse name");
                 return -1;
             }
-            dcprintfln(dc, "Name(%s, ", name); 
+            dcprintfln(dc, "Name(%.*s, ", (int)(name.end-name.it), name.it); 
             dc->depth++;
             if((e=decompile_dataref(dc)) < 0)
                 return e;
@@ -176,12 +184,12 @@ int decompile_obj(Decompiler* dc) {
                     void* end = dc->end; 
 
                     dc->end = next;
-                    const char* name = dc_nameseg(dc);
-                    if(!name) {
+                    Name name;
+                    if((e=dc_ns(dc, &name)) < 0) {
                         eprintfln("Failed to parse name");
-                        return -1;
+                        return e;
                     }
-                    dcprintfln(dc, "Device(%s)", name);
+                    dcprintfln(dc, "Device(%.*s)", (int)(name.end-name.it), name.it);
                     dcprintfln(dc, "{");
                     dc->depth++;
                     while(dc_left(dc) > 0) {
@@ -239,12 +247,41 @@ int decompile(Decompiler* dc) {
                 void* end = dc->end; 
 
                 dc->end = next;
-                const char* name = dc_nameseg(dc);
-                if(!name) {
+                Name name;
+                if((e=dc_ns(dc, &name)) < 0) {
                     eprintfln("Failed to parse name");
-                    return -1;
+                    return e;
                 }
-                dcprintfln(dc, "Scope(%s)", name);
+                dcprintfln(dc, "Scope(%.*s)", (int)(name.end-name.it), name.it);
+                dcprintfln(dc, "{");
+                dc->depth++;
+                while(dc_left(dc) > 0) {
+                    if((e=decompile_obj(dc)) < 0) 
+                       return e;
+                }
+                dc->depth--;
+                dcprintfln(dc, "}");
+                dc->head = next;
+                dc->end = end;
+            } break;
+            case 0x14: {
+                int len = pkg_len(dc);
+                if(len < 0) return -1;
+                if(dc_left(dc) < (size_t)len) 
+                    return -1;
+                void* next = dc->head+len;
+                void* end = dc->end; 
+
+                dc->end = next;
+                Name name;
+                if((e=dc_ns(dc, &name)) < 0) {
+                    eprintfln("Failed to parse name");
+                    return e;
+                }
+                if(dc_left(dc) == 0) 
+                    return -1;
+                uint8_t method_flags = dc_eat_byte(dc);
+                dcprintfln(dc, "Method(%.*s, %d)", (int)(name.end-name.it), name.it, method_flags);
                 dcprintfln(dc, "{");
                 dc->depth++;
                 while(dc_left(dc) > 0) {
