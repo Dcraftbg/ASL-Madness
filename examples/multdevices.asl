@@ -10,5 +10,9 @@ DefinitionBlock ("multdevices.aml", "DSDT", 1, "OEMID ", "TABLEID ", 0x00000000)
             }
             Name (_HID, EisaId ("PNP0A04"))
         }
+        Device (PCI1)
+        {
+            Name (_HID, EisaId ("PNP0A03"))
+        }
     }
 }
