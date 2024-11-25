@@ -124,7 +124,6 @@ const char* dc_nameseg(Decompiler* dc) {
 int decompile_dataref(Decompiler* dc) {
     if(dc_left(dc) == 0) 
         return -1;
-    int e;
     uint8_t op = dc_eat_byte(dc); 
     switch(op) {
     case 0x0B:
