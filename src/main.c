@@ -248,8 +248,10 @@ int decompile(Decompiler* dc) {
                 dcprintfln(dc, "Scope(%s)", name);
                 dcprintfln(dc, "{");
                 dc->depth++;
-                if((e=decompile_obj(dc)) < 0) 
-                    return e;
+                while(dc_left(dc) > 0) {
+                    if((e=decompile_obj(dc)) < 0) 
+                       return e;
+                }
                 dc->depth--;
                 dcprintfln(dc, "}");
                 dc->head = next;
